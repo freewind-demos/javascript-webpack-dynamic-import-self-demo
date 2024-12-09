@@ -1,79 +1,55 @@
-# Dynamic Import Self Demo
+# javascript-webpack-dynamic-import-self-demo
 
-这个demo演示了在JavaScript中动态导入模块自身时的行为。
+这个demo用来测试在webpack环境下,一个模块动态导入自身时的行为,并与vite的行为进行对比。
 
-## 关键代码
+## 实验内容
 
-```javascript
-// main.js
-console.log('### 开始导入main.js');
-console.log("### 当前URL:", import.meta.url);
+在`main.js`中:
+1. 执行一些初始化代码(创建div等)
+2. 使用`import('./main.js')`动态导入自身
+3. 等待2秒后检查导入结果
 
-const container = document.getElementById('container');
-const div = document.createElement('div');
-div.textContent = `Hello from main.js! (${new Date().toISOString()})`;
-container.appendChild(div);
+## 实验结果
 
-// 立即导入自己
-console.log('### 准备递归导入');
-const importPromise = import('./main.js');
+### Webpack行为
 
-importPromise.then(module => {
-    console.log('### 递归导入完成，module:', module);
-});
+1. 模块只会执行一次
+2. 重复导入时会返回缓存的模块实例
+3. 日志显示:
+   ```
+   ### 开始导入main.js
+   ### 当前URL: file:///path/to/main.js
+   ### 准备递归导入
+   ### 成功导入main.js
+   ### 递归导入完成，module: Module {__esModule: true, Symbol(Symbol.toStringTag): 'Module'}
+   ### 原始时间戳: 2024-12-09T13:39:23.936Z
+   ```
+   - 时间戳保持不变,说明模块没有被重新执行
 
-console.log('### 成功导入main.js');
-```
+### Vite行为
 
-## 模块加载行为分析
+1. 模块会被重复执行
+2. 每次导入都会重新运行模块代码
+3. 日志会显示多次"开始导入main.js"
 
-当点击按钮时，会看到如下日志输出：
+## 行为差异分析
 
-```
-### 开始导入main.js
-### 当前URL: http://localhost:5173/main.js
-### 准备递归导入
-### 成功导入main.js
-### 开始导入main.js
-### 当前URL: http://localhost:5173/main.js?t=1733750455748
-### 准备递归导入
-### 成功导入main.js
-### 递归导入完成，module: Module {Symbol(Symbol.toStringTag): 'Module'}
-### 递归导入完成，module: Module {Symbol(Symbol.toStringTag): 'Module'}
-```
+1. Webpack和Vite对动态导入的实现方式不同:
+   - Webpack使用模块缓存,相同模块只执行一次
+   - Vite会重新执行被导入的模块
 
-这个输出揭示了几个关键点：
+2. 这个差异是在模块系统实现层面的,与开发/生产环境无关
 
-1. 第一次执行：
-   - URL是 `http://localhost:5173/main.js`
-   - 执行完整个模块代码
-   - 遇到 `import('./main.js')` 时，Vite 会添加时间戳
+## 运行Demo
 
-2. 第二次执行：
-   - URL变成了 `http://localhost:5173/main.js?t=1733750455748`
-   - 由于URL不同，被视为新的模块，触发了第二次执行
-   - 当这次执行遇到 `import('./main.js')` 时，Vite 会复用相同的时间戳
-   - 因此第三次导入实际上和第二次是同一个URL，不会触发新的执行
+1. 安装依赖:
+   ```bash
+   pnpm install
+   ```
 
-3. 最后两个"递归导入完成"消息：
-   - 来自两次执行中的 `importPromise.then` 回调
-   - 虽然是不同的Module对象（因为URL不同），但结构相同
+2. 启动开发服务器:
+   ```bash
+   pnpm start
+   ```
 
-## 关键发现
-
-1. Vite的开发服务器对动态import的处理策略：
-   - 首次遇到重复import时，添加时间戳参数
-   - 后续的重复import会复用同样的时间戳
-   - 这个机制确保了模块最多只会执行两次
-
-2. 不同URL（即使指向同一个文件）会被视为不同的模块
-3. 每个模块实例都有完整的执行上下文
-
-## 运行项目
-
-```bash
-npm install
-npm start
-```
-
-然后点击页面上的按钮，观察控制台输出。
+3. 点击页面上的"Import Self"按钮测试动态导入
